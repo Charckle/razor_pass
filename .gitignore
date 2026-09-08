@@ -1,0 +1,12 @@
+/rpass
+/rpass.exe
+*.kdbx
+*.exe
+
+# editor / OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
