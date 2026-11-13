@@ -67,10 +67,11 @@ type Model struct {
 	ranked           []scoredEntry
 	search           cursorList
 
-	detail      *kdbx.Entry
-	detailFrom  mode
-	detailOff   int
-	detailLines []string
+	detail       *kdbx.Entry
+	detailFrom   mode
+	detailOff    int
+	detailLines  []string
+	showPassword bool
 
 	status    string
 	clipSeq   int
@@ -428,6 +429,7 @@ func (m *Model) openDetail(e *kdbx.Entry, from mode) {
 	m.detail = e
 	m.detailFrom = from
 	m.detailOff = 0
+	m.showPassword = false
 	m.mode = modeDetail
 	m.buildDetailLines()
 }
@@ -436,6 +438,7 @@ func (m *Model) clearDetail() {
 	m.detail = nil
 	m.detailLines = nil
 	m.detailOff = 0
+	m.showPassword = false
 }
 
 func (m *Model) startUnlock() tea.Cmd {

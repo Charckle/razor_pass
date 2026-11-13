@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"rpass/internal/kdbx"
 )
 
 func (m Model) View() string {
@@ -251,17 +252,13 @@ func (m *Model) buildDetailLines() {
 		m.detailLines = nil
 		return
 	}
-	mask := "(empty)"
-	if e.Password != "" {
-		mask = "********"
-	}
 	lines := []string{
 		"  " + titleStyle.Render(orDash(e.Title)),
 		"  " + dimStyle.Render("group    ") + e.Path,
 		"  " + dimStyle.Render("user     ") + orDash(e.Username),
-		"  " + dimStyle.Render("password ") + mask,
-		"  " + dimStyle.Render("url      ") + orDash(e.URL),
 	}
+	lines = append(lines, m.passwordLines(e)...)
+	lines = append(lines, "  "+dimStyle.Render("url      ")+orDash(e.URL))
 	for _, f := range e.Extra {
 		lines = append(lines, "  "+dimStyle.Render(padKey(f.Key))+" "+f.Value)
 	}
@@ -273,6 +270,67 @@ func (m *Model) buildDetailLines() {
 		}
 	}
 	m.detailLines = lines
+}
+
+// passwordLines renders the password field. It stays masked until s is pressed
+// on this entry, and a revealed value is hard-wrapped so a long password is
+// not cut off by the pane width.
+func (m *Model) passwordLines(e *kdbx.Entry) []string {
+	const label = "password "
+	prefix := "  " + dimStyle.Render(label)
+	if e.Password == "" || !m.showPassword {
+		shown := "(empty)"
+		if e.Password != "" {
+			shown = "********"
+		}
+		return []string{prefix + shown}
+	}
+	budget := m.contentWidth() - len("  ") - len(label)
+	if budget < 1 {
+		budget = 1
+	}
+	chunks := hardWrap(e.Password, budget)
+	lines := make([]string, 0, len(chunks))
+	lines = append(lines, prefix+chunks[0])
+	pad := strings.Repeat(" ", len("  ")+len(label))
+	for _, c := range chunks[1:] {
+		lines = append(lines, pad+c)
+	}
+	return lines
+}
+
+// hardWrap splits s into lines of at most width cells, breaking mid-word.
+// Passwords have no spaces, so word wrap would leave them as one line.
+func hardWrap(s string, width int) []string {
+	if s == "" {
+		return []string{""}
+	}
+	if width < 1 {
+		width = 1
+	}
+	if lipgloss.Width(s) <= width {
+		return []string{s}
+	}
+	var lines []string
+	var b strings.Builder
+	used := 0
+	for _, r := range s {
+		rw := lipgloss.Width(string(r))
+		if rw < 1 {
+			rw = 1
+		}
+		if used > 0 && used+rw > width {
+			lines = append(lines, b.String())
+			b.Reset()
+			used = 0
+		}
+		b.WriteRune(r)
+		used += rw
+	}
+	if b.Len() > 0 {
+		lines = append(lines, b.String())
+	}
+	return lines
 }
 
 func (m Model) viewDetail(h int) string {
@@ -308,6 +366,7 @@ var helpLines = strings.Split(strings.TrimSpace(`
     ↓  tab       jump to results
     ↑            back to query
     y            copy password
+    s            show or hide the password
     u            copy username
     w            copy url
     o            open that entry's folder in the tree

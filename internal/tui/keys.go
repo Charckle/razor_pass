@@ -230,6 +230,13 @@ func (m *Model) keysDetail(s string) tea.Cmd {
 			m.revealInTree(m.detail)
 		}
 		return nil
+	case "s":
+		if m.detail == nil {
+			return nil
+		}
+		m.showPassword = !m.showPassword
+		m.buildDetailLines()
+		return nil
 	case "up", "k":
 		if m.detailOff > 0 {
 			m.detailOff--
